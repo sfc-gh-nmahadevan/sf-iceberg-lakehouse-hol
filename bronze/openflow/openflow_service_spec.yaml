@@ -1,0 +1,116 @@
+spec:
+  # remove logExporters if you dont't want to publish logs to event table
+  logExporters:
+    eventTableConfig:
+      logLevel: INFO
+  containers:
+    - name: extensions
+      image: /snowflake/images/snowflake_images/runtime-extensions:2025.5.22.22
+      command:
+        - /bin/sh
+        - -c
+        - "rm -rf /extensions-mount/extensions; cp -r /libs /extensions-mount/extensions; ls -l /extensions-mount/extensions; sleep inf"
+      resources:
+        requests:
+          cpu: 100m
+          memory: 1Gi
+        limits:
+          cpu: 100m
+          memory: 1Gi
+      volumeMounts:
+        - name: extensions
+          mountPath: /extensions-mount
+    - name: server
+      image: /snowflake/images/snowflake_images/runtime-server:2025.5.23.14
+      env:
+        NIFI_WEB_HTTP_HOST: ''
+        NIFI_WEB_HTTP_PORT: '8080'
+        NIFI_WEB_HTTPS_HOST: ''
+        NIFI_WEB_HTTPS_PORT: ''
+        NIFI_SECURITY_KEYSTORE: ''
+        NIFI_SECURITY_KEYSTORE_TYPE: ''
+        NIFI_SECURITY_TRUSTSTORE: ''
+        NIFI_SECURITY_TRUSTSTORE_TYPE: ''
+        NIFI_REMOTE_INPUT_SECURE: 'false'
+        NIFI_SECURITY_AUTORELOAD_ENABLED: 'false'
+        NIFI_WEB_REQUEST_LOG_FORMAT: '%{client}a - %{Sf-Context-Current-User}i %t "%r" %s %O "%{Referer}i" "%{User-Agent}i"'
+        NIFI_PROVENANCE_REPOSITORY_IMPLEMENTATION: 'org.apache.nifi.provenance.WriteAheadProvenanceRepository'
+        NIFI_PROVENANCE_REPOSITORY_DIRECTORY_DEFAULT: '/resources/provenance_repository'
+        NIFI_PROVENANCE_REPOSITORY_INDEXED_ATTRIBUTES: 'container.id,container.scope'
+        NIFI_FLOWFILE_REPOSITORY_DIRECTORY: '/resources/flowfile_repository'
+        NIFI_CONTENT_REPOSITORY_DIRECTORY_REPO1: '/content_repository'
+        NIFI_CONTENT_REPOSITORY_ARCHIVE_MAX_RETENTION_PERIOD: '24 hours'
+        NIFI_CONTENT_REPOSITORY_ARCHIVE_MAX_USAGE_PERCENTAGE: '80%'
+        NIFI_FLOW_CONFIGURATION_FILE: '/resources/flow.json.gz'
+        NIFI_DATABASE_DIRECTORY: '/resources/database_repository'
+        NIFI_ASSET_MANAGER_PROPERTIES_DIRECTORY: '/resources/assets'
+        NIFI_NAR_PERSISTENCE_PROVIDER_PROPERTIES_DIRECTORY: '/resources/nar_repository'
+        NIFI_NAR_LIBRARY_DIRECTORY_EXTENSIONS: '/resources/nars'
+        NIFI_NAR_LIBRARY_AUTOLOAD_DIRECTORY: '/opt/runtime-extensions/extensions'
+      secrets:
+        - snowflakeSecret: runtime_server_properties_key
+          envVarName: NIFI_SENSITIVE_PROPS_KEY
+      readinessProbe:
+        port: 8080
+        path: /nifi-api/authentication/configuration
+      resources:
+        requests:
+          cpu: 1500m
+          memory: 3Gi
+        limits:
+          cpu: 2000m
+          memory: 4Gi
+      volumeMounts:
+        - name: extensions
+          mountPath: /opt/runtime-extensions
+        - name: content-repository
+          mountPath: /content_repository
+        - name: resources
+          mountPath: /resources
+      command:
+        - /bin/sh
+        - -c
+        - "sleep 60; ./entrypoint.sh"
+    - name: gateway
+      image: /openflow/registry/openflow/nginx:1.27.2-alpine3.20-slim-amd64
+      command:
+        - /bin/sh
+        - -c
+        - "echo 'server { listen 80; location / { client_max_body_size 1000M; proxy_pass http://localhost:8080; proxy_set_header X-Forwarded-Proto https; proxy_set_header X-Forwarded-Port 443; proxy_set_header X-Forwarded-Host $host; } }' > /etc/nginx/conf.d/default.conf; nginx -g 'daemon off;'"
+      env:
+        NGINX_PORT: 80
+      resources:
+        requests:
+          cpu: 500m
+          memory: 1Gi
+        limits:
+          cpu: 1000m
+          memory: 1Gi
+      readinessProbe:
+        port: 80
+        path: /nifi-api/authentication/configuration
+  endpoints:
+    - name: runtime
+      port: 8080
+      public: false
+      protocol: HTTP
+    - name: gateway
+      port: 80
+      public: true
+      protocol: HTTP
+  volumes:
+    - name: extensions
+      source: block
+      size: 4Gi
+      uid: 1000
+      gid: 1000
+    - name: content-repository
+      source: block
+      size: 250Gi
+      uid: 1000
+      gid: 1000
+    - name: resources
+      source: block
+      size: 50Gi
+      uid: 1000
+      gid: 1000
