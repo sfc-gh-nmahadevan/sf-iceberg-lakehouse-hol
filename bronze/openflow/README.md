@@ -30,7 +30,7 @@ Before we use this component we need to configure it. So there are some settings
 We need to setup:
 
 * Kafka Connection Service
-* Group ID set this to your given group_id
+* Group ID set this to your given **group_id** For example `HOL_USER_999`
 * Topics set this to **trust**
 
 Setting up the "Kafka Connection Service"
@@ -60,19 +60,19 @@ It is a good practice to verify your settings. Click on the check button and fol
 
 ![verify_kafka_connection_service](./verify_kafka_connection_service.png)
 
-If everything is fine it will look like this:
+➡️ If everything is fine it will look like this:
 
 ![kafka_service_verified](./kafka_service_verified.png)
 
-Before we continue, let's test that everything is fine. To do that lets do the following, we will drag a log attribute and we will connect our ConsumeKafka component to it. And then we will right click and select Start
+🤓☝️ Before we continue, let's test that everything is fine. To do that lets do the following, we will drag a log attribute and we will connect our ConsumeKafka component to it. And then we will right click and select Start
 
 ![logging_test](./logging_test.png)
 
-After a few seconds you should see that the queue starts to grow
+➡️ After a few seconds you should see that the queue starts to grow
 
-![logging_test_2](./logging_test_2.png)\
+![logging_test_2](./logging_test_2.png)
 
-Right click and select List queue
+➡️ Right click and select List queue
 
 ![logging_test_3](./logging_test_3.png)
 
@@ -83,17 +83,17 @@ You can use this screen to see the "flow files" and their properties. You can al
 
 ![logging_test_5](./logging_test_5.png)
 
-Now let's stop our ConsumeKafka again and remove the LogAttribute and resume our flow.
+➡️ Now let's stop our `ConsumeKafka` again and remove the LogAttribute and resume our flow.
 
 And let continue with the rest of our Lab.
 
 So the next thing we want to do is to be able to write to different tables depending on the Kafka message.
 
-We will drag a RouteOnContent component to our canvas. And will select Configure as before. In the configure dialog we will use the + button to add new properties:
+We will drag a `RouteOnContent` component to our canvas. And will select Configure as before. In the configure dialog we will use the + button to add new properties:
 
 ![route_on_content_props](./route_on_content_props.png)
 
-And we will add three properties:
+➡️ And we will add three properties:
 
 | property name | Value                   |
 | ------------- | ----------------------- |
@@ -103,7 +103,7 @@ And we will add three properties:
 
 ![match_properties](./match_properties.png)
 
-Also remember to set the Match Requirement
+🔥 Also remember to set the **Match Requirement**
 
 ![match_requirement](./match_requirement.png)
 
@@ -111,26 +111,42 @@ We will use in this case some regular expressions that will allows to know which
 
 Ok we are done with the routing.
 
-Now we need to send these flow files to our target tables: MOVEMENTS_RAW_0001, MOVEMENTS_RAW_0002, MOVEMENTS_RAW_0003
+➡️ Now we need to send these flow files to our target tables: 
+* `HOL_USER_{user_num}.BRONZE.MOVEMENTS_RAW_0001`
+* `HOL_USER_{user_num}.BRONZE.MOVEMENTS_RAW_0002`
+* `HOL_USER_{user_num}.BRONZE.MOVEMENTS_RAW_0003`
 
-Let's drag a new processor into our canvas. Now we will be adding a PutSnowpipeStreaming processor.
+Let's drag a new processor into our canvas. Now we will be adding a `PutSnowpipeStreaming` processor.
 
 This component can be used to send data into tables in snowflake. We will need to configure:
 
-* Connection settings: We need an user/private key/account/database/schema/table_name
+* Connection settings: We need something like this. 
+> REMEMBER to change user_num according to your given user
+> 
+| PROPERTY        | VALUE                                  |
+|-----------------|----------------------------------------|
+| user:           | HOL_USER_{user_num}                    |
+| account:        | SFSEHOL-SUMMIT25_HOL_DE_DHFEJL         |
+| database:       | HOL_USER_{user_num}                    |
+| schema:         | BRONZE                                 |
+| table_name:     | MOVEMENTS_RAW_0001                     |
+| snowpipe prefix:| HOL_USER_{user_num}_${hostname(false)} |
+
+> The prefix is important because it relate to the [snowpipe channel](https://docs.snowflake.com/en/user-guide/data-load-snowpipe-streaming-overview#channels)
 
   * For the private key we will need to setup a [private key service](https://docs.snowflake.com/en/user-guide/data-integration/openflow/controllers/standardprivatekeyservice)
 * Record Reader
-
   * We need a [JsonTreeReader](https://docs.snowflake.com/en/user-guide/data-integration/openflow/controllers/jsontreereader)
+  
+🕶 We will setup the private key service and the json reader in the next sections.
 
 # Setting up the private key service.
 
-Just as before, we can use the "three dot" menu to create a service (select it looking for StandardPrivateKeyService) and then configure it.
+Just as before, we can use the "three dot" menu to create a service (select it looking for `StandardPrivateKeyService`) and then configure it.
 
 Before that we need to upload our private key.
 
-To do that we will go to the parameter context and select the one for our processor group. We will then add a parameter with a name according to our process group, check the reference assets checkbox, use the upload button to upload our private key, and save it.
+➡️ To do that we will go to the parameter context and select the one for our processor group. We will then add a parameter with a name according to our process group, check the reference assets checkbox, use the upload button to upload our private key, and save it.
 
 ![setting_up_the_private_key_parameter](./setting_up_the_private_key_parameter.gif)
 
@@ -142,17 +158,19 @@ We can now go to configure our Private Key Service
 
 For this service we just need to create a new one. Default settings will be enough for us.
 
-Now we are ready to connect our tables. Drag from the RouteOnContent component to the PutSnowpipeComponent. You will see that a dialog with the properties we defined previously appears:
+Now we are ready to connect our tables. Drag from the `RouteOnContent` component to the `PutSnowpipeComponent`. You will see that a dialog with the properties we defined previously appears:
 
 ![connect_to_write](./connect_to_write.png)
 
-And you need to setup the relationships for the write node.
+➡️ And you need to setup the relationships for the write node.
 
 ![image-20250528223958763](./image-20250528223958763.png)
 
-Now you are done for `MOVEMENTS_RAW_0001`. Just copy paste the now two times modify the processor name and table for `MOVEMENTS_RAW_0002` and `MOVEMENTS_RAW_0003` and drag the connections for `is_msg_0002` and `is_msg_0003`
+Now you are done for `MOVEMENTS_RAW_0001`. 
 
-And set the terminate relationship  for `RouteOnContent`
+➡️ Just copy paste the now two times modify the processor name and table for `MOVEMENTS_RAW_0002` and `MOVEMENTS_RAW_0003` and drag the connections for `is_msg_0002` and `is_msg_0003`
+
+➡️ And set the terminate relationship  for `RouteOnContent`
 
 ![route_on_content_terminate](./route_on_content_terminate.png)
 
