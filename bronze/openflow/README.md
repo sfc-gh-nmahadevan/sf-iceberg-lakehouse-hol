@@ -56,6 +56,8 @@ Use the "three dot" menu again.
 
 Set up the bootstrap server with the BROKER url.
 
+For our lab use this value: `kafka.ni6h.svc.spcs.internal:9092`
+
 It is a good practice to verify your settings. Click on the check button and follow the dialogs.
 
 ![verify_kafka_connection_service](./verify_kafka_connection_service.png)
